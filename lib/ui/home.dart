@@ -9,21 +9,30 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-
   var lastamount;
-     getlast() async{
-     lastamount = await getLastAmount();
-     if(lastamount == null)lastamount=0;
-   }
-  var selectedPageIndex = 0;
-  var amount = 0;
+  int selectedPageIndex = 0;
+  int amount = 0;
   var name = "No Data";
   final FocusNode _nameFocusNode = new FocusNode();
   final FocusNode _amountFocusNode = new FocusNode();
+  void getData() async{
+    lastamount = await getLastAmount();
+  }
+ void _refresh(){
+   setState(() {
+     
+   });
+ }
   @override
   void initState() {
-    getlast();
+    getData();
+    _refresh();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -51,9 +60,7 @@ class _HomeState extends State<Home> {
             selectedPageIndex = index;
             if (selectedPageIndex == 0) {
               _settingBottomSheet(context);
-            } else if (selectedPageIndex == 1) {
-              readAll();
-            }
+            } else if (selectedPageIndex == 1) {}
           });
         },
         currentIndex: selectedPageIndex,
@@ -63,11 +70,14 @@ class _HomeState extends State<Home> {
           Container(
               width: MediaQuery.of(context).size.width,
               height: 150.0,
-              decoration: BoxDecoration(color: Colors.blueGrey),
+              decoration: BoxDecoration(color: Colors.white),
               alignment: Alignment(0.0, 0.0),
               child: Text(
                 "$lastamount MMK",
-                style: TextStyle(fontSize: 36.0, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 36.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               )),
         ],
       ),
@@ -115,15 +125,19 @@ class _HomeState extends State<Home> {
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     focusNode: _amountFocusNode,
-                    onSubmitted: (value) {
+                    onSubmitted: (value){
                       amount = int.parse(value);
                       print(amount);
-                      if (name != "No Data" && amount != 0) {
-                        save(name, amount);
-                        Navigator.pop(context);
+                      if (name != "No Data" && amount != 0 || null) {
+                          save(name, amount);
+                          getData();
+                          Navigator.pop(context);
+                          _refresh();
                       } else if (name == "No Data") {
+                        print("no name");
                         FocusScope.of(context).requestFocus(_nameFocusNode);
                       } else if (amount == 0) {
+                        print("No amount");
                         FocusScope.of(context).requestFocus(_amountFocusNode);
                       }
                     }),

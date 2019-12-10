@@ -5,10 +5,10 @@ import 'package:path_provider/path_provider.dart';
 
 // database table and column names
 final String tableAccounts = 'account';
-final String columnId = '_id';
+final String columnId = 'id';
 final String columnName = 'name';
 final String columnAmount = 'amount';
-final String columnFinal = 'finalammount';
+final String columnFinal = 'finalamount';
 
 // data model class
 class Account {
@@ -46,7 +46,7 @@ class DatabaseHelper {
   // This is the actual database filename that is saved in the docs directory.
   static final _databaseName = "MyDatabase.db";
   // Increment this version when you need to change the schema.
-  static final _databaseVersion = 3;
+  static final _databaseVersion = 1;
 
   // Make this a singleton class.
   DatabaseHelper._privateConstructor();
@@ -90,76 +90,95 @@ class DatabaseHelper {
     return id;
   }
 
-  Future<Account> queryMainAccount(int id) async {
-    Database db = await database;
-    List<Map> maps =
-        await db.query(tableAccounts, where: '$columnId = ?', whereArgs: [id]);
-    if (maps.length > 0) {
-      return Account.fromMap(maps.first);
-    }
-    return null;
-  }
-
-  queryAccount() async {
+  queryAccountList() async {
     Database db = await database;
     var list = await db.query(tableAccounts);
     List<Account> accountsList =
         list.isNotEmpty ? list.map((c) => Account.fromMap(c)).toList() : [];
     return accountsList;
   }
+}
 
-  Future<Account> updateMainBalance(Account newaccount) async {
-    Database db = await database;
-    await db.update(tableAccounts, newaccount.toMap(),
-        where: "id = ?", whereArgs: [newaccount.id]);
-    return null;
+queryLastAmount(int rowId) async {
+  int lastamount;
+  // get a reference to the database
+  Database db = await DatabaseHelper.instance.database;
+
+  // get single row
+  List<String> columnsToSelect = [
+    columnId,
+    columnName,
+    columnAmount,
+    columnFinal
+  ];
+  String whereString = 'id = ?';
+  List<dynamic> whereArguments = [rowId];
+  List<Map> result = await db.query(tableAccounts,
+      columns: columnsToSelect, where: whereString, whereArgs: whereArguments);
+  if (result.isEmpty) {
+    lastamount = 0;
+    print("FIrst time ");
+    return lastamount;
+  } else {
+    result.forEach((f) => print(f));
+    Map<String, dynamic> mapRead = result.first;
+    int lastamount = mapRead['finalamount'];
+    print(lastamount);
+    return lastamount;
   }
 }
 
 // get all data by list
 readAll() async {
   DatabaseHelper helper = DatabaseHelper.instance;
-  List<Account> account = await helper.queryAccount();
-  return account;
+  List<Account> account = await helper.queryAccountList();
+  print(account.length);
+  return account.length;
 }
 
-//read only first row data which will always update;
+//Get the last amount of data;
 getLastAmount() async {
-  DatabaseHelper helper = DatabaseHelper.instance;
-  List<Account> allList = await helper.queryAccount();
-  int id = allList.length;
-  var lastamount;
-  if (id == 0 || null) {
-    lastamount = 0;
-    return lastamount;
-  } else {
-    Account account = await helper.queryMainAccount(id);
-    var lastamount = account.finalamount;
-    return lastamount;
-  }
+  int lastRow = await readAll();
+  int lastamount = await queryLastAmount(lastRow);
+  print("Last Amount $lastamount.");
+  return lastamount;
 }
 
 save(String name, int amount) async {
-  var lastamount = await getLastAmount();
-  if (lastamount == null) lastamount = 0;
-  Account account = Account();
-  account.name = name;
-  account.amount = amount;
-  account.finalamount = lastamount;
-  DatabaseHelper helper = DatabaseHelper.instance;
-  int id = await helper.insert(account);
-  update(name, amount);
-  print('inserted row: $id');
+  int lastRow;
+  int lastamount;
+  lastRow = await readAll();
+  if (lastRow == 0) {
+    print("its first time");
+    Account account = Account();
+    account.name = name;
+    account.amount = amount;
+    account.finalamount = amount;
+    DatabaseHelper helper = DatabaseHelper.instance;
+    int id = await helper.insert(account);
+    print('inserted row: $id');
+  } else {
+    print("Data existed");
+    lastamount = await getLastAmount() as int;
+    Account account = Account();
+    account.name = name;
+    account.amount = amount;
+    account.finalamount = amount + lastamount;
+    DatabaseHelper helper = DatabaseHelper.instance;
+    int id = await helper.insert(account);
+    print('inserted row: $id');
+  }
 }
 
-update(String name, int amount) async {
-  var lastamount = await getLastAmount();
-  if (lastamount == 0) lastamount = 0;
-  int updateAmount = lastamount + amount;
-  Account updateAccount = Account();
-  updateAccount.name = name;
-  updateAccount.amount = amount;
-  updateAccount.finalamount = updateAmount;
-  DatabaseHelper helper = DatabaseHelper.instance;
-  await helper.updateMainBalance(updateAccount);
-}
+// update(String name, int amount) async {
+//   int lastamount;
+//   lastamount = await getLastAmount();
+//   if (lastamount == 0) lastamount = 0;
+//   int updateAmount = lastamount + amount;
+//   Account updateAccount = Account();
+//   updateAccount.name = name;
+//   updateAccount.amount = amount;
+//   updateAccount.finalamount = updateAmount;
+//   DatabaseHelper helper = DatabaseHelper.instance;
+//   await helper.updateMainBalance(updateAccount);
+// }
